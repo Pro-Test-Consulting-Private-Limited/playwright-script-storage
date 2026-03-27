@@ -38,6 +38,8 @@ def run(playwright: Playwright) -> None:
         page.locator("[data-test=\"password\"]").click()
         page.locator("[data-test=\"password\"]").fill("secret_sauce")
         page.locator("[data-test=\"login-button\"]").click()
+        page.get_by_role("button", name="Open Menu").click()
+        page.get_by_role("button", name="Close Menu").click()
     except Exception as e:
         # Capture failure screenshot
         try:
