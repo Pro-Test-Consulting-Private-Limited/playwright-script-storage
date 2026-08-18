@@ -82,16 +82,7 @@ def run(playwright: Playwright) -> None:
     page.set_default_timeout(3000)
 
     def highlight(locator):
-        try:
-            locator.evaluate(
-                """(el) => {
-                    el.style.outline = '4px solid red';
-                    el.style.outlineOffset = '2px';
-                    el.scrollIntoView({ block: 'center' });
-                }"""
-            )
-        except Exception:
-            pass
+        locator.highlight()
         page.wait_for_timeout(800)
 
     try:
@@ -100,13 +91,11 @@ def run(playwright: Playwright) -> None:
         email_box = page.get_by_role("textbox", name="you@example.com")
         highlight(email_box)
         email_box.click()
-        highlight(email_box)
         email_box.fill("9900776952")
 
         password_box = page.get_by_role("textbox", name="••••••••")
         highlight(password_box)
         password_box.click()
-        highlight(password_box)
         password_box.fill("Sai@2003")
 
         show_btn = page.get_by_role("button", name="Show")
@@ -152,6 +141,10 @@ def run(playwright: Playwright) -> None:
             browser.close()
         except:
             pass
+
+
+with sync_playwright() as playwright:
+    run(playwright)
 
 
 with sync_playwright() as playwright:
