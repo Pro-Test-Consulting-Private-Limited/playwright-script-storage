@@ -69,346 +69,62 @@
 # with sync_playwright() as playwright:
 #     run(playwright)
 
-import sys
-from playwright.sync_api import Playwright, sync_playwright, Locator
+from playwright.sync_api import sync_playwright, Locator
 
+with sync_playwright() as p:
 
-# ============================================================
-# ORIGINAL PLAYWRIGHT METHODS
-# ============================================================
-
-_original_click = Locator.click
-_original_fill = Locator.fill
-_original_check = Locator.check
-_original_uncheck = Locator.uncheck
-_original_select_option = Locator.select_option
-_original_press = Locator.press
-
-
-# ============================================================
-# HIGHLIGHT
-# ============================================================
-
-def highlight(locator):
-    try:
-        # IMPORTANT:
-        # Wait until Playwright can actually resolve the element.
-        locator.wait_for(state="visible", timeout=10000)
-
-        # Scroll it into the center.
-        locator.scroll_into_view_if_needed()
-
-        # Apply highlight.
-        locator.evaluate("""
-            el => {
-                el.dataset.__pw_old_outline = el.style.outline || "";
-                el.dataset.__pw_old_outline_offset =
-                    el.style.outlineOffset || "";
-
-                el.style.setProperty(
-                    "outline",
-                    "5px solid red",
-                    "important"
-                );
-
-                el.style.setProperty(
-                    "outline-offset",
-                    "3px",
-                    "important"
-                );
-
-                el.style.setProperty(
-                    "background-color",
-                    "rgba(255, 255, 0, 0.25)",
-                    "important"
-                );
-            }
-        """)
-
-        # Give the browser time to render the highlight.
-        locator.page.wait_for_timeout(1000)
-
-    except Exception as e:
-        print(f"[HIGHLIGHT ERROR] {e}")
-
-
-def remove_highlight(locator):
-    try:
-        locator.evaluate("""
-            el => {
-                el.style.outline =
-                    el.dataset.__pw_old_outline || "";
-
-                el.style.outlineOffset =
-                    el.dataset.__pw_old_outline_offset || "";
-
-                el.style.removeProperty("background-color");
-
-                delete el.dataset.__pw_old_outline;
-                delete el.dataset.__pw_old_outline_offset;
-            }
-        """)
-    except Exception:
-        pass
-
-
-# ============================================================
-# PATCH CLICK
-# ============================================================
-
-def highlighted_click(self, *args, **kwargs):
-
-    print("🔥 CLICK")
-    print("   locator:", self)
-
-    highlight(self)
-
-    try:
-        return _original_click(self, *args, **kwargs)
-    finally:
-        remove_highlight(self)
-
-
-# ============================================================
-# PATCH FILL
-# ============================================================
-
-def highlighted_fill(self, value, *args, **kwargs):
-
-    print("✏️ FILL")
-    print("   locator:", self)
-
-    highlight(self)
-
-    try:
-        return _original_fill(
-            self,
-            value,
-            *args,
-            **kwargs
-        )
-    finally:
-        remove_highlight(self)
-
-
-# ============================================================
-# PATCH CHECK
-# ============================================================
-
-def highlighted_check(self, *args, **kwargs):
-
-    print("☑️ CHECK")
-    print("   locator:", self)
-
-    highlight(self)
-
-    try:
-        return _original_check(
-            self,
-            *args,
-            **kwargs
-        )
-    finally:
-        remove_highlight(self)
-
-
-# ============================================================
-# PATCH UNCHECK
-# ============================================================
-
-def highlighted_uncheck(self, *args, **kwargs):
-
-    print("☐ UNCHECK")
-    print("   locator:", self)
-
-    highlight(self)
-
-    try:
-        return _original_uncheck(
-            self,
-            *args,
-            **kwargs
-        )
-    finally:
-        remove_highlight(self)
-
-
-# ============================================================
-# PATCH SELECT OPTION
-# ============================================================
-
-def highlighted_select_option(self, *args, **kwargs):
-
-    print("🔽 SELECT")
-    print("   locator:", self)
-
-    highlight(self)
-
-    try:
-        return _original_select_option(
-            self,
-            *args,
-            **kwargs
-        )
-    finally:
-        remove_highlight(self)
-
-
-# ============================================================
-# PATCH PRESS
-# ============================================================
-
-def highlighted_press(self, *args, **kwargs):
-
-    print("⌨️ PRESS")
-    print("   locator:", self)
-
-    highlight(self)
-
-    try:
-        return _original_press(
-            self,
-            *args,
-            **kwargs
-        )
-    finally:
-        remove_highlight(self)
-
-
-# ============================================================
-# INSTALL PATCHES
-# ============================================================
-
-Locator.click = highlighted_click
-Locator.fill = highlighted_fill
-Locator.check = highlighted_check
-Locator.uncheck = highlighted_uncheck
-Locator.select_option = highlighted_select_option
-Locator.press = highlighted_press
-
-
-# ============================================================
-# TEST
-# ============================================================
-
-def run(playwright: Playwright):
-
-    browser = playwright.chromium.launch(
+    browser = p.chromium.launch(
         headless=False,
         slow_mo=1500
     )
 
-    context = browser.new_context(
-        record_video_dir="videos/"
+    page = browser.new_page()
+
+    # First confirm the browser/page works
+    page.goto(
+        "https://ai-hub-demo.protestcorp.com/login",
+        wait_until="domcontentloaded"
     )
 
-    page = context.new_page()
+    print("PAGE OPENED:", page.title())
 
-    page.set_default_timeout(10000)
+    # Patch AFTER page is already open
+    original_click = Locator.click
 
-    try:
+    def test_click(self, *args, **kwargs):
+        print("🔥 PATCHED CLICK")
 
-        print("🌐 Opening page...")
+        self.wait_for(state="visible")
+        self.scroll_into_view_if_needed()
 
-        page.goto(
-            "https://ai-hub-demo.protestcorp.com/login",
-            wait_until="domcontentloaded",
-            timeout=30000
-        )
+        self.evaluate("""
+            el => {
+                el.style.setProperty(
+                    'outline',
+                    '6px solid red',
+                    'important'
+                );
+                el.style.setProperty(
+                    'background-color',
+                    'yellow',
+                    'important'
+                );
+            }
+        """)
 
-        print("✅ Page loaded")
-        print("TITLE:", page.title())
-        print("URL:", page.url)
+        self.page.wait_for_timeout(3000)
 
-        # Give Next.js / React hydration time to finish.
-        page.wait_for_timeout(2000)
+        return original_click(self, *args, **kwargs)
 
-        # ----------------------------------------------------
-        # LOGIN
-        # ----------------------------------------------------
+    Locator.click = test_click
 
-        email = page.get_by_role(
-            "textbox",
-            name="you@example.com"
-        )
+    page.get_by_role(
+        "textbox",
+        name="you@example.com"
+    ).click()
 
-        email.click()
-        email.fill("Wrong Number")
+    page.wait_for_timeout(5000)
 
-        password = page.get_by_role(
-            "textbox",
-            name="••••••••"
-        )
+    browser.close()
 
-        password.click()
-        password.fill("Sai@2003")
-
-        page.get_by_role(
-            "button",
-            name="Show"
-        ).click()
-
-        page.get_by_role(
-            "button",
-            name="Login"
-        ).click()
-
-        # ----------------------------------------------------
-        # NAVIGATION
-        # ----------------------------------------------------
-
-        page.get_by_role(
-            "link",
-            name="Approvals"
-        ).click()
-
-        page.get_by_role(
-            "link",
-            name="Users"
-        ).click()
-
-        page.get_by_role(
-            "link",
-            name="History"
-        ).click()
-
-        page.get_by_role(
-            "button",
-            name="Export CSV"
-        ).click()
-
-        print("✅ TEST COMPLETED")
-
-    except Exception as e:
-
-        print("\n❌ TEST FAILED")
-        print(e)
-
-        try:
-            if not page.is_closed():
-                page.screenshot(
-                    path="failure.png",
-                    full_page=True
-                )
-                print("📸 Screenshot: failure.png")
-        except Exception:
-            pass
-
-        raise
-
-    finally:
-
-        try:
-            context.close()
-        except Exception:
-            pass
-
-        try:
-            browser.close()
-        except Exception:
-            pass
-
-
-with sync_playwright() as playwright:
-    run(playwright)
 
