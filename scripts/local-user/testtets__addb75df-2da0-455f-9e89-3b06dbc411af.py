@@ -34,7 +34,7 @@ def run(playwright: Playwright) -> None:
     try:
         page.goto("https://ai-hub-demo.protestcorp.com/login")
         page.get_by_role("textbox", name="you@example.com").click()
-        page.get_by_role("textbox", name="you@example.com").fill("9900776952")
+        page.get_by_role("textbox", name="you@example.com").fill("Wrong Number")
         page.get_by_role("textbox", name="••••••••").click()
         page.get_by_role("textbox", name="••••••••").fill("Sai@2003")
         page.get_by_role("button", name="Show").click()
