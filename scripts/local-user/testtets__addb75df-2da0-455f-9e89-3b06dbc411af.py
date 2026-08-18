@@ -69,62 +69,28 @@
 # with sync_playwright() as playwright:
 #     run(playwright)
 
-from playwright.sync_api import sync_playwright, Locator
+from playwright.sync_api import sync_playwright
 
 with sync_playwright() as p:
-
-    browser = p.chromium.launch(
-        headless=False,
-        slow_mo=1500
-    )
-
+    browser = p.chromium.launch(headless=False)
     page = browser.new_page()
 
-    # First confirm the browser/page works
-    page.goto(
-        "https://ai-hub-demo.protestcorp.com/login",
-        wait_until="domcontentloaded"
-    )
+    page.goto("https://ai-hub-demo.protestcorp.com/login")
 
-    print("PAGE OPENED:", page.title())
-
-    # Patch AFTER page is already open
-    original_click = Locator.click
-
-    def test_click(self, *args, **kwargs):
-        print("🔥 PATCHED CLICK")
-
-        self.wait_for(state="visible")
-        self.scroll_into_view_if_needed()
-
-        self.evaluate("""
-            el => {
-                el.style.setProperty(
-                    'outline',
-                    '6px solid red',
-                    'important'
-                );
-                el.style.setProperty(
-                    'background-color',
-                    'yellow',
-                    'important'
-                );
-            }
-        """)
-
-        self.page.wait_for_timeout(3000)
-
-        return original_click(self, *args, **kwargs)
-
-    Locator.click = test_click
+    print("OPENED:", page.title())
 
     page.get_by_role(
         "textbox",
         name="you@example.com"
-    ).click()
+    ).evaluate("""
+        el => {
+            el.style.outline = '8px solid red';
+            el.style.backgroundColor = 'yellow';
+        }
+    """)
 
-    page.wait_for_timeout(5000)
+    print("HIGHLIGHT APPLIED")
+
+    page.wait_for_timeout(10000)
 
     browser.close()
-
-
